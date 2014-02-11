@@ -24,17 +24,18 @@ class Chain():
                             if a[-4:]==".txt"] 
         # CosmoMC case
         if self._code == "cosmomc":
-            self._load_params_cosmomc(folder)
+            self._load_params_cosmomc(folder, prefix)
             self._chains = [os.path.join(folder, a) for a in os.listdir(folder)
-                            if a[-4:]==".txt"] 
+                            if a.startswith(prefix) and a[-4:]==".txt"] 
         # Points
         individual_chains = []
         for chain in self._chains:
             individual_chains.append(np.loadtxt(chain))
         self._points = np.concatenate(individual_chains)
         # Scaling -- MontePython
-        for i, param in enumerate(self.varying_params() + self.derived_params()):
-            self._points[:, i+2] *= float(self._params["parameter"][param][4])
+        if self._code == "montepython":
+            for i, param in enumerate(self.varying_params() + self.derived_params()):
+                self._points[:, i+2] *= float(self._params["parameter"][param][4])
         # Finding best fit(s) -- faster if done noe (only once!)
         maxloglik = self.get_min("mloglik")
         bf = [i for i, mloglik in enumerate(self.points("mloglik"))
@@ -73,7 +74,6 @@ class Chain():
                     self._sorted_varying_params.append(key)
                 if param_type == "derived":
                     self._sorted_derived_params.append(key)
-
             if "data.path" in line:
                 left, right = line.split("=")
                 if not "data.path" in left:
@@ -85,11 +85,11 @@ class Chain():
                   "parameter":      parameters,
                   "path":           path}
         self._params = params
-    def _load_params_cosmomc(self, chain_folder) :
+    def _load_params_cosmomc(self, chain_folder, prefix) :
         assert os.path.exists(chain_folder) ,\
             "The chain folder does not exist: "+chain_folder
         self._name = chain_folder.strip("/").split("/")[-1]
-        logparam = open(os.path.join(chain_folder, chain_folder.split("/")[-1]+".inputparams"))
+        logparam = open(os.path.join(chain_folder, prefix+".inputparams"))
         cosmo_arguments = {}
         parameters      = {}
         for line in logparam :
@@ -106,9 +106,19 @@ class Chain():
                 paramname = left
                 cosmo_arguments[paramname] = right
         logparam.close()
-        params = {"cosmo_arguments": cosmo_arguments,
-                  "parameters":      parameters}
+        params = {"cosmo_argument": cosmo_arguments,
+                  "parameter":      parameters}
         self._params = params
+        # Columns in the chain files
+        self._sorted_varying_params = [] # list of the (sorted) varying parameters
+        self._sorted_derived_params = [] # list of the (sorted) derived parameters
+        with open(os.path.join(chain_folder, prefix+".paramnames"), "r") as pfile:
+            for line in pfile:
+                param = line.split()[0].strip()
+                if param[-1] == "*":
+                    self._sorted_derived_params.append(param)
+                else:
+                    self._sorted_varying_params.append(param)
 
     # Get chain data in a code independent way
     def name(self):
@@ -165,21 +175,21 @@ class Chain():
 
         Output: [lower, upper], with 'None' where no limit was imposed.
         """
-        if self._code == "montepython":
-            if param in self.varying_params():
-                limits = [None, None]
-                for i in [1, 2]:
-                   lim = self._params["parameter"][param][i].strip()
+        if param in self.varying_params():
+            limits = [None, None]
+            for i in [1, 2]:
+               lim = self._params["parameter"][param][i].strip()
+               if self._code == "montepython":
                    scale = float(self._params["parameter"][param][4])
                    limits[i-1] = float(lim)*scale if lim != '-1' else None
-                return limits
-            elif param in self.derived_params():
-                raise ValueError("The parameter '%s' has no limits: "%param +
-                                 "it is a derived parameter.")
-            else:
-                raise ValueError("The parameter '%s' is not recognised."%param)
-        elif self._code == "cosmomc":
-            raise NotImplementedError()
+               elif self._code == "cosmomc":
+                   limits[i-1] = float(lim)
+            return limits
+        elif param in self.derived_params():
+            raise ValueError("The parameter '%s' has no limits: "%param +
+                             "it is a derived parameter.")
+        else:
+            raise ValueError("The parameter '%s' is not recognised."%param)
     def best_fit(self, param=None, more_than_one=False):
         """
         Returns the best fit point(s) of the chain, as a list of at least one point.
@@ -447,10 +457,11 @@ def plot_2Dprofile(chains, params,
     cb = plt.colorbar(imsh, **cb_options)
     # Axes labels and ticks #####
     plt.tick_params(labelsize=fontsize_ticks)
-    if labels:
-        assert len(labels) == 2, "There must be 2 labels."
-        plt.xlabel(labels[0], fontsize = fontsize_labels, fontweight = "bold")
-        plt.ylabel(labels[1], fontsize = fontsize_labels, fontweight = "bold")
+    if not labels:
+        labels = params
+    assert len(labels) == 2, "There must be 2 labels."
+    plt.xlabel(labels[0], fontsize = fontsize_labels, fontweight = "bold")
+    plt.ylabel(labels[1], fontsize = fontsize_labels, fontweight = "bold")
     cb.ax.tick_params(labelsize=fontsize_ticks)
     cb_label = "\ln\mathcal{L}$"
     if "delta" in format:
