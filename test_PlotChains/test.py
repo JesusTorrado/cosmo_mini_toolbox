@@ -2,12 +2,14 @@ import os
 import sys
 
 sys.path.append("..")
-from ChainTools import Chain, plot_2Dprofile
+from Chain import Chain
+from plot_lik import plot_lik_2D
 
 folder = "./base"
 chains = [Chain(folder)]
+params=["H0",     "omega_b"]
+labels=[r"$H_0$", r"$\omega_b$"]
 
-plot_2Dprofile(chains, params=["H0", "omega_b"], labels=["$H_0$", "$\omega_b$"],
-               format = "-loglik",
-#               save_file = "./test.png"
-               )
+plot_lik_2D("profile", chains, params=params, labels=labels, format = "-loglik",
+#           transparent=False, save_file="./%s_%s.png"%(params[0], params[1])
+           )

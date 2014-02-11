@@ -1,12 +1,15 @@
 # General:
 
-* Documentar
+* Write README
+
+# Chains
+
+* Document!
 
 # plot_2Dprofile:
 
-* TESTEAR para CAMB con las de Bin
-
-
+* Fix padding (specially negative parameters)
+* Fix small issue with the best fit points
 
 
 
