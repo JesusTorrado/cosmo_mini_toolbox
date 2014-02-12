@@ -1,10 +1,10 @@
 # `cosmo_mini_toolbox` README
 
-**Author**: Jesús Torrado ![(personal web page)](http://www.lorentz.leidenuniv.nl/~torradocacho/)
+**Author**: Jesús Torrado ([personal web page](http://www.lorentz.leidenuniv.nl/~torradocacho/))
 
-Small (but growing) set of tools for manipulating cosmological data and statistical results, and for generating publication-quality plots (used, e.g, in ![arXiv:1311.2552](http://arxiv.org/abs/1311.2552)).
+Small (but growing) set of tools for manipulating cosmological data and statistical results, and for generating publication-quality plots (used, e.g, in [arXiv:1311.2552](http://arxiv.org/abs/1311.2552)).
 
-All the tools are intended to use products of the two most famous cosmological-code/sampler tandems, ![CLASS](http://class-code.net/)+![MontePython](http://montepython.net/) and ![CAMB](http://camb.info/)+![CosmoMC](http://cosmologist.info/cosmomc/), so that most of the operations can be done independently of the origin of the product.
+All the tools are intended to use products of the two most famous cosmological-code/sampler tandems, [CLASS](http://class-code.net/)+[MontePython](http://montepython.net/) and [CAMB](http://camb.info/)+[CosmoMC](http://cosmologist.info/cosmomc/), so that most of the operations can be done independently of the origin of the product.
 
 Requires:
 * `numpy` (minimal version tested: 1.6.1)
