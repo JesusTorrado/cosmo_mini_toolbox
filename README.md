@@ -119,6 +119,6 @@ An experimental implementation of the log+linear scale used to plot the CMB powe
 
 #### On the data poins of the CMB temperature power spectrum
 
-The Planck temperature power spectrum data points (folder `data`) are a text version of the corresponding `fits` files published by the (Planck collaboration)[http://www.esa.int/Planck] and are subject to the same license.
+The Planck temperature power spectrum data points (folder `data`) are a text version of the corresponding `fits` files published by the [Planck collaboration](http://www.esa.int/Planck) and are subject to the same license.
 
 Both the points and their error bars are provided for illustrative purposes only, and should not be taken as an absolute result.
