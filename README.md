@@ -9,7 +9,7 @@ All the tools are intended to use products of the two most famous cosmological-c
 Requires:
 * `numpy` (minimal version tested: 1.6.1)
 * `matplotlib` (minimal version tested: 1.2.1)
-* For the likelihood calculation, the ESA Planck's likelihood code (see [](http://pla.esac.esa.int/pla/aio/planckProducts.html))
+* For the likelihood calculation, the ESA Planck's likelihood code (see [here](http://pla.esac.esa.int/pla/aio/planckProducts.html))
 
 ## Overview and examples of the modules
 
