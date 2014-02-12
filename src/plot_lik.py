@@ -11,7 +11,7 @@ from Chain import Chain
 
 ### Plot of 2D likelihoods
 def plot_lik_2D(mode, chains, params,
-                # Main parameters
+                # Main customisation parameters
                 labels=None, format="-loglik", central_mloglik=None,
                 limits=None, n_grid=100, aspect=1,
                 color_map="jet_r", black_and_white=False,
@@ -20,7 +20,8 @@ def plot_lik_2D(mode, chains, params,
                 # Fine tuning
                 fontsize_labels=18, fontsize_ticks=12,
                 cb_ticks_formatter=None, cb_shrink=float(1),
-                padding = 0.02, dpi=150, transparent=True, not_yet=False,
+                padding = 0.02, dpi=150, not_yet=False,
+                transparent=False, transparent_frame=False,
                 bf_alpha=1, bf_radius=1, bf_thickness=1,
                 bf_color_in="white", bf_color_out="black",
                 regions_color="0.5", regions_thickness=1, regions_style="--"
@@ -57,7 +58,7 @@ def plot_lik_2D(mode, chains, params,
     Main customisation parameters:
     ------------------------------
 
-    labels: list of 2 str (optional)
+    labels: list of 2 str (default: None)
         Alternative names of the parameters to show as axes labels.
         LaTeX typesetting is allowed.
         By default, the parameter names are used direcly.
@@ -71,7 +72,7 @@ def plot_lik_2D(mode, chains, params,
             * 'chisq' for the chi squared, i.e., 2*(-loglik)
             * 'detachisq' same as 'delta-loglik' for the chi squared
 
-    central_mloglik: float (optional)
+    central_mloglik: float (default: None)
         Central value of the -log(lik) in the color bar.
         If specified, values smaller than that one will be set to the inverse
         of the maximum loglik with respect to the central value.
@@ -79,7 +80,7 @@ def plot_lik_2D(mode, chains, params,
                  likelihoods (Planck+WMAPpol -> 4902.95).
         ("mean" and "profile" only)
 
-    limits: list of 2 [min, max] floats (optional)
+    limits: list of 2 [min, max] floats (default: None)
         To restrict the parameter ranges manually, give a list like
             limits = [[min_1, max_1], [min_2, max_2]]
         when 'min_i' ('max_i') is the maximum of the parameter 'i' = 1, 2.
@@ -110,8 +111,9 @@ def plot_lik_2D(mode, chains, params,
         If True, shows a rectangle (or the part of it within the plot limits)
         marking the border of the prior, if any.
 
-    save_file: str (optional)
-        If defined, instead of showing the plot, it is saved into the given file.
+    save_file: str (default: None)
+        If defined, instead of showing the plot, it is saved into the given
+        file name.
 
 
     Fine Tuninng Parameters:
@@ -136,8 +138,12 @@ def plot_lik_2D(mode, chains, params,
     dpi: int (default: 150)
         Resolution used if the plot is saved to a file
 
-    transparent: bool (default: True)
+    transparent: bool (default: False)
         Transparency of the background of the plot.
+
+    transparent_frame: bool (default: False)
+        Transparency of the frame of the plot.
+        If 'transparent=True', this one is set to True too.
 
     not_yet: bool (default: False)
         If True, the output of the function is a string containing a
@@ -352,6 +358,7 @@ def plot_lik_2D(mode, chains, params,
         plt.show()
         return
     else:
+        fig.frameon = not(transparent_frame or transparent)
         plotting_command = ("plt.savefig('%s', transparent = %s, dpi = %s, "%(
                              save_file, transparent, int(dpi))+
                             "bbox_inches='tight', pad_inches=0.1)")

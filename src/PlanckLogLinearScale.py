@@ -6,6 +6,7 @@
 #       since the scale must be registered (see last line)
 
 import numpy as np
+from math import floor
 from matplotlib import scale as mscale
 from matplotlib.transforms import Transform
 from matplotlib.ticker import Formatter, FixedLocator

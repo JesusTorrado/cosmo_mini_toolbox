@@ -31,8 +31,18 @@ class CMBspectrum():
         if code.lower() == "camb":
             self._code = "camb"
         self._load_data(folder, prefix)
+        if name:
+            self._name = name
+        else:
+            if prefix:
+                for i in ["_", "-"]:
+                    if prefix[-1] == i:
+                        prefix.rstrip(i)
+                self._name = prefix
+            else:
+                self._name = folder.rstrip("/").split("/")[-1]
 
-    ### CLASS & CAMB
+    ### Load spectra: CLASS & CAMB
     def _load_data(self, folder, prefix):
         if self._code == "class":
             pname = os.path.join(folder, prefix + "parameters.ini")
@@ -100,8 +110,11 @@ class CMBspectrum():
         self._l_prefactor = True
         self._units = "1"
 
+    ### Retrieve name
+    def name(self):
+        return self._name
 
-    ### Retrieve parameters
+    ### Retrieve Cosmological Code parameters
     def parameter(self, name):
         return self._parameters.get(name)
     def param(self, name):
@@ -133,7 +146,6 @@ class CMBspectrum():
     def ulmax(self):
         return self.uCl("l")[-1]
 
-
     ### Retrieve spectrum, lensed
     def lCl(self, column, units="1", l_prefactor=True, T_CMB = T_CMB):
         assert  self._lensed, "No lensed spectrum has been calculated."
@@ -159,8 +171,8 @@ class CMBspectrum():
     def llmax(self):
         return self.lCl("l")[-1]
 
-
-    ### Change of units
+    ### Internal
+    # Change of units
     def _units_from_to(self, unit1, unit2, T_CMB = T_CMB):
         if unit1 == unit2:
             return 1
