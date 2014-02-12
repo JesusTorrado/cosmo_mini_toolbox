@@ -8,8 +8,26 @@ import numpy as np
 
 class Chain():
     """
-    Class to load the parameters of a chain in memory (incl. the chain files,
-    but not their content.
+    Class for manipulating chains and getting info from them, independently from
+    the code that generated them.
+
+    Mandatory arguments:
+    --------------------
+
+    folder: str
+        Folder in which the chain is stored.
+        In the case of a 'MontePython' chain, it is enough to specify the folder.
+        In the case of a 'CosmoMC' chain, a 'prefix' must also be given.
+
+
+    Optional arguments:
+    -------------------
+
+    prefix: str
+        Prefix of the chain files of a 'CosmoMC' chain.
+
+    code: one of ["MontePython" (default), "CosmoMC"]
+        Code with which the chain was generated.
 
     """
     def __init__(self, folder=None, prefix=None, code="MontePython"):

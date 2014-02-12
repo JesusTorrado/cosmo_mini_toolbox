@@ -1,23 +1,61 @@
 import os
+import numpy as np
 from collections import OrderedDict as odict
-import clik
 
-likelihoods = ["commander_v4.1_lm49.clik",
-               "CAMspec_v6.2TN_2013_02_26_dist.clik",
-               "lowlike_v222.clik"]
+try:
+    import clik
+except ImportError:
+    raise ImportError("The likelihood code seems not to have been installed "+
+                      "in your system.")
 
-class Likelihoods():
+class Likelihood_Planck():
+    """
+    Class for calculating log-likelihoods.
 
-    def __init__(self, folder=None, likelihoods=None):
-        self._likelihoods_names = (likelihoods if likelihoods else
-                                   ["commander_v4.1_lm49.clik",
-                                    "CAMspec_v6.2TN_2013_02_26_dist.clik",
-                                    "lowlike_v222.clik"])
+    Once initialised, the method 'Likelihood_Planck.get_loglik(spectrum)' can be
+    called any number of times for different 'spectrum' (instances of 'CMBspectrum').
+
+    Mandatory arguments:
+    --------------------
+
+    base_folder: str
+        Folder in which the likelihood data folders/files are found.
+
+    Optional arguments:
+    -------------------
+
+    likelihoods: list of elements from ["commander", "camspec", "lowlike"]
+        Names of the likelihoods to be computed.
+
+    """
+    def __init__(self, base_folder=None, likelihoods=None):
+        fullnames = odict([["commander", "commander_v4.1_lm49.clik"],
+                           ["camspec",   "CAMspec_v6.2TN_2013_02_26_dist.clik"],
+                           ["lowlike",   "lowlike_v222.clik"]])
+        likelihoods_fullnames = []
+        if likelihoods:
+            for lik in likelihoods:
+                if lik.lower() in fullnames:
+                    likelihoods_fullnames.append(fullnames[lik.lower()])
+                else:
+                    raise ValueError("Likelihood name not recognised: %s.\n"%lik+ 
+                                     "Valid ones are "+str(fullnames.keys()))
+            self._likelihoods_names = likelihoods_fullnames
+        else:
+            self._likelihoods_names = fullnames.values()
         # Initialize!
-        self._likelihoods = dict([name,clik.clik(os.path.join(folder, name))]
-                                 for name in self._likelihoods_names)
-        # Read nuisance parameters
-        self._nuisance_parameters = dict([lik_name,{}] for lik_name in self._likelihoods_names)
+        self._likelihoods = odict()
+        for lik in self._likelihoods_names:
+            full_path = os.path.join(base_folder, lik)
+            try:
+                self._likelihoods[lik] = clik.clik(full_path)
+            except clik.lkl.CError:
+                raise ValueError("'clik' failed to initialise the requested "+
+                                 "likelihood %s"%lik+", probably because it was"+
+                                 " not found on the given folder: '%s'"%full_path)
+        # Get nuisance parameters
+        self._nuisance_parameters = dict([lik_name,{}]
+                                         for lik_name in self._likelihoods_names)
         for lik in self._likelihoods_names:
             names = self._likelihoods[lik].extra_parameter_names
             self._nuisance_parameters[lik] = ({} if not names else
@@ -64,6 +102,13 @@ class Likelihoods():
                     raise KeyError("Nuisance parameter '%s' not defined!"%p)
 
     def get_loglik(self, CMBspectrum, verbose=False):
+        """
+        Returns a dictionary containing the contribution to the log-likelihood
+        of each of the likelihoods requested.
+
+        A summary of the information can be printed on screen using the keyword
+        'verbose=True'.
+        """
         # Check that nuisance parameters are defined (if one is, all are)
         for lik in self._likelihoods_names:
             if self._nuisance_parameters[lik]:
@@ -109,4 +154,4 @@ class Likelihoods():
             print "*** TOTAL :"
             print "loglik  = ",suma
             print "chi2eff = ",-2*suma
-        return suma
+        return loglik
