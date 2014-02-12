@@ -13,5 +13,5 @@ spectrum_folders += [os.path.join(base_folder, folder)
 spectra = [CMBspectrum(folder) for folder in spectrum_folders]
 
 plot_Cl_CMB(spectra, title = "Different fits to the Planck CMB spectrum",
-            save_file = "planck_Cl_diffs.png"
+            save_file = "planck_Cl_diffs.png",
             )

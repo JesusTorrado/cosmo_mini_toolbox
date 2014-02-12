@@ -2,6 +2,7 @@
 # Tool to plot and compare CMB power spectra #
 ##############################################
 
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import cycle
@@ -13,8 +14,8 @@ import PlanckLogLinearScale
 
 def plot_Cl_CMB(CMB_spectra,
                 # Main customisation parameters
-                Deltas=1, pol="TT", l_max=None, Deltas_max=110, title=None,
-                scale = "planck", aspect="auto", save_file=None,
+                Deltas=1, pol="TT", l_max=None, data_points=True, Deltas_max=175,
+                title=None, scale = "planck", aspect="auto", save_file=None,
                 black_and_white=False,
                 # Fine tuning parameters
                 lensed=True, l_prefactor=True,
@@ -51,7 +52,11 @@ def plot_Cl_CMB(CMB_spectra,
         Maximum multipole to plot.
         If not defined, the maximum common l maximum is used.
 
-    Deltas_max: float (default: 110)
+    data_points: bool (default: True)
+        Whether to plot the TT power spectrum data points of Planck.
+        N.B.: They are just for illustration purposes: they are strongly correlated.
+
+    Deltas_max: float (default: 175)
         Range of the y axis in the differences plot.
 
     title: str (default: None)
@@ -112,6 +117,11 @@ def plot_Cl_CMB(CMB_spectra,
     assert pol.lower() in spectrum_types, \
         ("Spectrum type (or polarisation) not recognised. Choose one of " + 
          str(spectra_types))
+    if pol.lower() != "tt":
+        data_points = False
+# TODO: Fix this!
+    if scale == "planck":
+        data_points = False
     l, Cl = {}, {}
     for spectrum in CMB_spectra:
         if lensed:
@@ -132,6 +142,15 @@ def plot_Cl_CMB(CMB_spectra,
             i= np.where(l[spectrum.name()]==l_max)[0][0]
             l [spectrum.name()] = l [spectrum.name()][:i+1]
             Cl[spectrum.name()] = Cl[spectrum.name()][:i+1]
+    # Prepare data points
+    if data_points:
+        data_folder = os.path.join(os.path.split(__file__)[0], "../data")
+        data_lowl  = np.loadtxt(os.path.join(data_folder,
+                                             "planck_spectrum_lowl.txt"))
+        data_lowl = data_lowl.transpose()
+        data_highl = np.loadtxt(os.path.join(data_folder,
+                                             "planck_spectrum_highl.txt"))
+        data_highl = data_highl.transpose()
     # Functions to prepare the spectra #####
     # Upper
     def plot_Cl(axes):
@@ -139,13 +158,25 @@ def plot_Cl_CMB(CMB_spectra,
             axes.plot(l [spectrum.name()], Cl[spectrum.name()],
                       color=next(colour_cycler), linestyle=next(style_cycler),
                       label = spectrum.name(), zorder = i)
+        if data_points :
+            axes.errorbar(data_lowl[0], data_lowl[1],
+                          yerr = [data_lowl[3], data_lowl[2]],
+                          fmt = ".", color = colour_data_lowl,  zorder = -2)
+            axes.errorbar(data_highl[0], data_highl[1], yerr = data_highl[2],
+                          fmt = ".", color = colour_data_highl, zorder = -1)
     # Lower
     def compare(name1, name2, invert = False) :
         diffs = []
         for l_i, cl_i in zip(l[name2], Cl[name2]) :
-            i= np.where(l[spectrum.name()]==l_i)[0][0]
+            i= np.where(l[name1]==l_i)[0][0]
             diffs.append((cl_i-Cl[name1][i])*(-1 if invert else 1))
-        return l[name1], diffs
+        return l[name2], diffs
+    def compare_data(name1, l2, Cl2, invert = False) :
+        diffs = []
+        for l_i, cl_i in zip(l2, Cl2) :
+            i= np.where(l[name1]==l_i)[0][0]
+            diffs.append((cl_i-Cl[name1][i])*(-1 if invert else 1))
+        return l2, diffs
     def plot_Deltas(axes):
         # First one
         axes.plot([0 for a in l[CMB_spectra[0].name()]],
@@ -157,6 +188,16 @@ def plot_Cl_CMB(CMB_spectra,
             axes.plot(l_cmp, cl_cmp,
                       color=next(colour_cycler), linestyle=next(style_cycler),
                       label=spectrum.name(), zorder = i+1)
+        if data_points :
+            l_cmp_data, cmp_data = compare_data(CMB_spectra[0].name(),
+                                                data_lowl[0], data_lowl[1])
+            axes.errorbar(l_cmp_data, cmp_data,
+                          yerr = [data_lowl[3], data_lowl[2]],
+                          fmt = ".", color = colour_data_lowl, zorder = -2)
+            l_cmp_data, cmp_data = compare_data(CMB_spectra[0].name(),
+                                                data_highl[0], data_highl[1])
+            axes.errorbar(l_cmp_data, cmp_data, yerr = data_highl[2],
+                          fmt = ".", color = colour_data_highl, zorder = -1)    
     # Prepare the plot #####
     # Arrange
     fig, axarr = plt.subplots(2, sharex=(Deltas==1))
@@ -178,7 +219,9 @@ def plot_Cl_CMB(CMB_spectra,
         list_of_styles  = ["-", ":", "--", "-."]
         if len(CMB_spectra) > len(list_of_styles):
             print ("WARNING: if more that %d spectra "%len(list_of_styles) +
-                  "are plot in balck and white, the line styles will be repeated.")           
+                  "are plot in balck and white, the line styles will be repeated.")
+    colour_data_lowl  = "0.50"
+    colour_data_highl = "0.30"
     # Do plot
     if ax_Cl:
         # Generate the cycles
@@ -193,14 +236,14 @@ def plot_Cl_CMB(CMB_spectra,
     # Formatting #####
     # Axes labels
     if ax_Cl:
-        ax_Cl.set_ylabel((r"$\frac{\ell(\ell+1)}{2\pi}\,C_\ell^{"
-                          +pol+r"}$ $(\mu\mathrm{K}^2)$"),
+        ax_Cl.set_ylabel((r"$\frac{\ell(\ell+1)}{2\pi}\,C_\ell^{"+
+                          r"\mathrm{"+pol+r"}}$ $(\mu\mathrm{K}^2)$"),
                          fontsize=labels_fontsize)
         if not(ax_Deltas):
             ax_Cl.set_xlabel(r"Multipole, $\ell$", fontsize=labels_fontsize)
     if ax_Deltas:
-        ax_Deltas.set_ylabel((r"$\frac{\ell(\ell+1)}{2\pi}\,\Delta C_\ell^{"
-                              +pol+r"}$ $(\mu\mathrm{K}^2)$"),
+        ax_Deltas.set_ylabel((r"$\frac{\ell(\ell+1)}{2\pi}\,\Delta C_\ell^{"+
+                              r"\mathrm{"+pol+r"}}$ $(\mu\mathrm{K}^2)$"),
                          fontsize=labels_fontsize)
         ax_Deltas.set_xlabel(r"$\mathrm{Multipole,}\,\ell$",
                              fontsize=labels_fontsize)
