@@ -11,6 +11,7 @@ from itertools import cycle
 from CMBspectrum import CMBspectrum
 import PlanckLogLinearScale
 
+nonpos = "mask"
 
 def plot_Cl_CMB(CMB_spectra,
                 # Main customisation parameters
@@ -119,9 +120,6 @@ def plot_Cl_CMB(CMB_spectra,
          str(spectra_types))
     if pol.lower() != "tt":
         data_points = False
-# TODO: Fix this!
-    if scale == "planck":
-        data_points = False
     l, Cl = {}, {}
     for spectrum in CMB_spectra:
         if lensed:
@@ -188,6 +186,8 @@ def plot_Cl_CMB(CMB_spectra,
             axes.plot(l_cmp, cl_cmp,
                       color=next(colour_cycler), linestyle=next(style_cycler),
                       label=spectrum.name(), zorder = i+1)
+
+        # Data points
         if data_points :
             l_cmp_data, cmp_data = compare_data(CMB_spectra[0].name(),
                                                 data_lowl[0], data_lowl[1])
@@ -273,9 +273,6 @@ def plot_Cl_CMB(CMB_spectra,
     scales = ["linear", "log", "planck"]
     assert scale.lower() in scales, \
         "'scale' must be in "+str(scales)
-    if scale == "planck":
-        print ("WARNING: This implementation of the 'planck' scale " +
-               "used by the ESA Planck mission is experimental.")
     for ax in axes_list:
         ax.set_xscale(scale)
     # Aspect

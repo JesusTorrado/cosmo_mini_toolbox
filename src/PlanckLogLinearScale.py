@@ -6,122 +6,128 @@
 #       since the scale must be registered (see last line)
 
 import numpy as np
+from numpy import ma
+MaskedArray = ma.MaskedArray
 from math import floor
 from matplotlib import scale as mscale
 from matplotlib.transforms import Transform
 from matplotlib.ticker import Formatter, FixedLocator
 
-class PlanckLogLinearScale(mscale.ScaleBase):
-    # The scale class must have a member ``name`` that defines the
-    # string used to select the scale.  For example,
-    # ``gca().set_yscale("mercator")`` would be used to select this
-    # scale.
+nonpos = "mask"
+change = 50.0
+factor = 750.
+
+def _mask_nonpos(a):
+    """
+    Return a Numpy masked array where all non-positive 1 are
+    masked.  If there are no non-positive, the original array
+    is returned.
+    """
+    mask = a <= 0.0
+    if mask.any():
+        return ma.MaskedArray(a, mask=mask)
+    return a
+
+def _clip_smaller_than_one(a):
+    a[a <= 0.0] = 1e-300
+    return a
+
+class PlanckScale(mscale.ScaleBase):
+    """
+    Scale used by the Planck collaboration to plot Temperature power spectra:
+    base-10 logarithmic up to l=50, and linear from there on.
+
+    Care is taken so non-positive values are not plotted.
+    """
     name = 'planck'
+
     def __init__(self, axis, **kwargs):
-        """
-        Any keyword arguments passed to ``set_xscale`` and
-        ``set_yscale`` will be passed along to the scale's
-        constructor.
-        """
-        mscale.ScaleBase.__init__(self)
+        pass
+
+    def set_default_locators_and_formatters(self, axis):
+        axis.set_major_locator(
+            FixedLocator(
+                np.concatenate((np.array([2, 5, 10, 20, change]),
+                                np.arange(500, 2500, 500)))))
+        axis.set_minor_locator(
+            FixedLocator(
+                np.concatenate((np.arange(2, 10),
+                                np.arange(10, 50, 10),
+                                np.arange(floor(change/100), 2500, 100)))))
+
     def get_transform(self):
         """
-        Override this method to return a new instance that does the
-        actual transformation of the data.
+        Return a :class:`~matplotlib.transforms.Transform` instance
+        appropriate for the given logarithm base.
         """
-        return self.PlanckLogLinearTransform()
-    def set_default_locators_and_formatters(self, axis):
-         """
-         Override to set up the locators and formatters to use with the
-         scale.  This is only required if the scale requires custom
-         locators and formatters.  Writing custom locators and
-         formatters is rather outside the scope of this example, but
-         there are many helpful examples in ``ticker.py``.
+        return self.PlanckTransform(nonpos)
 
-#         In our case, the Mercator example uses a fixed locator from
-#         -90 to 90 degrees and a custom formatter class to put convert
-#         the radians to degrees and put a degree symbol after the
-#         value::
-         """
-# EXAMPLE CODE
-#         class DegreeFormatter(Formatter):
-#             def __call__(self, x, pos=None):
-#                 # \u00b0 : degree symbol
-#                 return "%d\u00b0" % ((x / np.pi) * 180.0)
-#         deg2rad = np.pi / 180.0
-#         axis.set_major_locator(FixedLocator(np.arange(1, 2500, 10)))
-#         axis.set_major_formatter(DegreeFormatter())
-#         axis.set_minor_formatter(DegreeFormatter())
-         change = 50
-         axis.set_major_locator(FixedLocator(np.concatenate((np.array([2,5,10,20]),
-                                                             np.array([change]),
-                                                             np.arange(500, 2500, 500)))))
-         axis.set_minor_locator(FixedLocator(np.concatenate((np.arange(2,10),
-                                                             np.arange(10,50,10),
-                                                             np.arange(floor(change/100), 2500, 100)))))
-    class PlanckLogLinearTransform(Transform):
-        input_dims = 1
-        output_dims = 1
+    def limit_range_for_scale(self, vmin, vmax, minpos):
+        """
+        Limit the domain to positive values.
+        """
+        return (vmin <= 0.0 and minpos or vmin,
+                vmax <= 0.0 and minpos or vmax)
+
+    class PlanckTransform(Transform):
+        input_dims   = 1
+        output_dims  = 1
         is_separable = True
-        has_inverse = True
-        def __init__(self):
+        def __init__(self, nonpos):
             Transform.__init__(self)
-        def transform_non_affine(self, a):
-            """
-            This transform takes an Nx1 ``numpy`` array and returns a
-            transformed copy.  Since the range of the Mercator scale
-            is limited by the user-specified threshold, the input
-            array must be masked to contain only valid values.
-            ``matplotlib`` will handle masked arrays and remove the
-            out-of-range data from the plot.  Importantly, the
-            ``transform`` method *must* return an array that is the
-            same shape as the input array, since these values need to
-            remain synchronized with values in the other dimension.
-            """
-            change = 50.
-            factor = 750.
+            if nonpos == 'mask':
+                self._handle_nonpos = _mask_nonpos
+            else:
+                self._handle_nonpos = _clip_nonpos
+
+        def transform(self, a):
             lower   = a[np.where(a<=change)]
             greater = a[np.where(a> change)]
             if lower.size:
-                lower_after   = factor*np.log10(lower)
+                lower = self._handle_nonpos(lower * 10.0)/10.0
+                if isinstance(lower, MaskedArray):
+                    lower = ma.log10(lower)
+                else:
+                    lower = np.log10(lower)
+                lower = factor*lower
             if greater.size:
-                greater_after = factor*np.log10(change) + (greater-change)
+                greater = (factor*np.log10(change) + (greater-change))
             # Only low
             if not(greater.size):
-                return lower_after
+                return lower
             # Only high
             if not(lower.size):
-                return greater_after
-            return np.concatenate((lower_after, greater_after))
+                return greater
+            return np.concatenate((lower, greater))
+
         def inverted(self):
-            """
-            Override this method so matplotlib knows how to get the
-            inverse transform for this transform.
-            """
-            return InvertedPlanckLogLinearTransform()
-    class InvertedPlanckLogLinearTransform(Transform):
-        input_dims = 1
-        output_dims = 1
+            return PlanckScale.InvertedPlanckTransform()
+
+    class InvertedPlanckTransform(Transform):
+        input_dims   = 1
+        output_dims  = 1
         is_separable = True
-        has_inverse = True
-        def transform_non_affine(self, a):
-            change = 50.
-            factor = 750.
+
+        def transform(self, a):
             lower   = a[np.where(a<=factor*np.log10(change))]
             greater = a[np.where(a> factor*np.log10(change))]
             if lower.size:
-                lower_after   = np.power(10.0, lower/factor)
+                if isinstance(lower, MaskedArray):
+                    lower = ma.power(10.0, lower/float(factor))
+                else:
+                    lower = np.power(10.0, lower/float(factor))
             if greater.size:
-                greater_after = greater + change - factor*np.log10(change)
+                greater = (greater + change - factor*np.log10(change))
             # Only low
             if not(greater.size):
-                return lower_after
+                return lower
             # Only high
             if not(lower.size):
-                return greater_after
-            return np.concatenate((lower_after, greater_after))
+                return greater
+            return np.concatenate((lower, greater))
         def inverted(self):
-            return PlanckLogLinearTransform()
+            return PlanckTransform()
 
 # Finished. Register the scale!
-mscale.register_scale(PlanckLogLinearScale)
+mscale.register_scale(PlanckScale)
+

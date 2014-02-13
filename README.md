@@ -29,9 +29,11 @@ The code in `examples/plot_Cl_CMB_example.py` generates the following plot:
 
 ![Different fits to the Planck CMB spectrum](planck_Cl_diffs.png)
 
-#### TODO
+### PlanckLogLinearScale.py
 
-* Add Planck data points
+An implementation of the log+linear scale used to plot the CMB power spectrum by the ESA Planck team.
+
+The example plot in the last section uses it.
 
 ### Chain.py
 
@@ -98,18 +100,6 @@ The code in `examples/likelihood_example.py` generates the following output:
     loglik  =  -4901.54609864
     chi2eff =  9803.09219727
 
-
-### PlanckLogLinearScale.py
-
-An experimental implementation of the log+linear scale used to plot the CMB power spectrum by the ESA Planck team.
-
-#### TODO:
-
-* fix localisation in the matplotlib GUI
-* Manually change the aspect ratio
-* Automatic ticks
-* 'change' and 'factor' parameters to be set manually, not hard coded
-* Document
 
 ## License
 
