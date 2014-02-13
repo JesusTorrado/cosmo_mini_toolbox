@@ -1,0 +1,13 @@
+# List of input/precision parameters passed
+# but not used (just for info)
+#
+P_k_max_h/Mpc = 1.
+non linear ic = PT
+w0_fld = -1
+cs2_fld = 1
+z_pk = 0
+l_max_tensors = 500
+alpha_s = 0.
+n_s = 0.9619
+A_s = 2.215e-9
+wa_fld = 0.

@@ -1,6 +1,11 @@
 import os
+import sys
 import numpy as np
 from collections import OrderedDict as odict
+import matplotlib.pyplot as plt
+
+# Internal
+from CMBspectrum import CMBspectrum
 
 try:
     import clik
@@ -101,7 +106,7 @@ class Likelihood_Planck():
                 except KeyError:
                     raise KeyError("Nuisance parameter '%s' not defined!"%p)
 
-    def get_loglik(self, CMBspectrum, verbose=False):
+    def get_loglik(self, spectrum, verbose=False):
         """
         Returns a dictionary containing the contribution to the log-likelihood
         of each of the likelihoods requested.
@@ -109,6 +114,87 @@ class Likelihood_Planck():
         A summary of the information can be printed on screen using the keyword
         'verbose=True'.
         """
+        spectrum_prepared = self._prepare_spectrum(spectrum)
+        return self._get_loglik_internal(spectrum_prepared, verbose=verbose)
+
+    def compare_loglik(self, reference_spectrum, test_spectrum, delta_l=20,
+                       verbose=False):
+        """
+        dsaadfhadfhadfhadfhadf
+
+
+
+        Returns a dictionary containing the contribution to the log-likelihood
+        of each of the likelihoods requested.
+
+        A summary of the information can be printed on screen using the keyword
+        'verbose=True'.
+        """
+
+
+
+        # Prepare both spectra
+        reference_prepared = self._prepare_spectrum(reference_spectrum)
+        test_prepared      = self._prepare_spectrum(test_spectrum)
+        # Go alog the multipoles and get the likelihood
+        reference_loglik = \
+            self._get_loglik_internal(reference_prepared, verbose=False)
+        l_max = dict([lik, max(self._likelihoods[lik].lmax)]
+                     for lik in self._likelihoods_names)
+        ls = np.arange(0, 1+max(l_max.values()), delta_l)
+        l_differences       = []
+        l_differences_total = []
+        l_differences_accum = []
+        if verbose:
+            print "Progress: l =",
+            sys.stdout.flush()
+        for i, l in enumerate(ls):
+            if verbose:
+                print l,
+                sys.stdout.flush()       
+            for lik in self._likelihoods_names:
+                n_cls = len([int(i) for i in self._likelihoods[lik].has_cl
+                             if int(i)])
+#                print n_cls
+#                print l_max[lik], len(reference_prepared[lik])
+                if l <= l_max[lik]:
+                    for i in range(n_cls): #cl in range(len(reference_prepared[lik][0])):
+#                        print lik
+#                        print l
+#                        print cl
+#                        print "**"
+                        for lj in range(1+ls[i-1], 
+
+                        # ASIGNAR TODOS LOS QUE CAEN ENTRE LA ULTIMA l Y ESTA!!!
+
+                        reference_prepared[lik][l+i*(1+l_max[lik])] = \
+                            test_prepared[lik][l+i*(1+l_max[lik])]
+            loglik = self._get_loglik_internal(reference_prepared, verbose=False)
+            l_differences.append(dict([lik, reference_loglik[lik]-loglik[lik]]
+                                      for lik in loglik))
+            l_differences_total.append(sum(reference_loglik[lik]-loglik[lik]
+                                           for lik in loglik))
+            l_differences_accum.append(sum(l_differences_total))
+            plt.figure()
+            plt.plot(ls[:i+1], l_differences_total, color="blue")
+            plt.plot(ls[:i+1], l_differences_total, color="red")
+            plt.savefig("/tmp/test.png")
+
+        # Plot
+        
+
+    # Internal #####
+    def _prepare_spectrum(self, spectrum):
+        """
+        Given a 'CMBspectrum' instance, prepares a dictionary of the spectra
+        required by each likelihood, in the correct format to be feeded directly
+        to 'clik'.
+
+        The output is to be passed to 'Likelihood_Planck._get_loglik_internal()'.
+        """
+        # Check that the input is correct
+        assert isinstance(spectrum, CMBspectrum), \
+            "The spectrum provided must be an instance of 'CMBspectrum'."
         # Check that nuisance parameters are defined (if one is, all are)
         for lik in self._likelihoods_names:
             if self._nuisance_parameters[lik]:
@@ -116,14 +202,14 @@ class Likelihood_Planck():
                     "Nuisance parameters not yet defined! Set their values using "+
                     "'Likelihoods.set_nuisance()'.")
         # Format of Clik :  TT EE BB TE TB EB ( l = 0, 1, 2, ... !!!)
-        l = list(CMBspectrum.ll())
+        l = list(spectrum.ll())
         pre = range(int(l[0]))
         l = np.array(pre + l)
-        spectrum = np.zeros([len(l), 6])
+        prepared = np.zeros([len(l), 6])
         # NOTICE that this sets C_0 = C_1 = 0
-        spectrum[2:, 0] = CMBspectrum.lCl("TT", units="muK", l_prefactor=False)
-        spectrum[2:, 1] = CMBspectrum.lCl("EE", units="muK", l_prefactor=False)
-        spectrum[2:, 3] = CMBspectrum.lCl("TE", units="muK", l_prefactor=False)
+        prepared[2:, 0] = spectrum.lCl("TT", units="muK", l_prefactor=False)
+        prepared[2:, 1] = spectrum.lCl("EE", units="muK", l_prefactor=False)
+        prepared[2:, 3] = spectrum.lCl("TE", units="muK", l_prefactor=False)
         # Prepare the vectors for the likelihoods:
         vectors = {}
         for lik in self._likelihoods_names:
@@ -136,16 +222,22 @@ class Likelihood_Planck():
                 "'%s' : needs %d, got %d"%(lik, max(l_max), len(l)))
             for i, cli in enumerate(which_cls):
                 if cli:
-                    vectors[lik] += spectrum[:(1+l_max[i]), i].tolist()
+                    vectors[lik] += prepared[:(1+l_max[i]), i].tolist()
             # Nuisance
             for par,val in self._nuisance_parameters[lik].items():
                 vectors[lik].append(val)
-        # Calculate the likelihood
+        return vectors
+
+    def _get_loglik_internal(self, spectrum_prepared, verbose=False):
+        """
+        Actually calculates the likelihood of a previously prepared spectrum,
+        i.e. the output of 'Likelihood_Planck._prepare_spectrum()'.
+        """
         loglik = {}
         for lik in self._likelihoods_names:
             if verbose:
                 print "*** Computing : "+lik
-            loglik[lik] = self._likelihoods[lik](vectors[lik])
+            loglik[lik] = self._likelihoods[lik](spectrum_prepared[lik])
             if verbose:
                 print "loglik  = ",loglik[lik]
                 print "chi2eff = ",-2*loglik[lik]
@@ -155,3 +247,4 @@ class Likelihood_Planck():
             print "loglik  = ",suma
             print "chi2eff = ",-2*suma
         return loglik
+
