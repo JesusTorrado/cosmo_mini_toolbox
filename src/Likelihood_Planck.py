@@ -141,43 +141,39 @@ class Likelihood_Planck():
             self._get_loglik_internal(reference_prepared, verbose=False)
         l_max = dict([lik, max(self._likelihoods[lik].lmax)]
                      for lik in self._likelihoods_names)
+        n_cls = dict([name, len([int(i) for i in lik.has_cl if int(i)])]
+                     for name, lik in self._likelihoods.items())
+# TODO asegurarse de que esto esta mejor
         ls = np.arange(0, 1+max(l_max.values()), delta_l)
         l_differences       = []
         l_differences_total = []
-        l_differences_accum = []
+        l_differences_step  = []
         if verbose:
+            print ("Calculating likelihood differences along multipoles"+
+                   "with Delta_l = %d"%delta_l)
             print "Progress: l =",
             sys.stdout.flush()
-        for i, l in enumerate(ls):
+        for i, l in enumerate(ls[1:]):
             if verbose:
                 print l,
                 sys.stdout.flush()       
             for lik in self._likelihoods_names:
-                n_cls = len([int(i) for i in self._likelihoods[lik].has_cl
-                             if int(i)])
-#                print n_cls
-#                print l_max[lik], len(reference_prepared[lik])
                 if l <= l_max[lik]:
-                    for i in range(n_cls): #cl in range(len(reference_prepared[lik][0])):
-#                        print lik
-#                        print l
-#                        print cl
-#                        print "**"
-                        for lj in range(1+ls[i-1], 
-
-                        # ASIGNAR TODOS LOS QUE CAEN ENTRE LA ULTIMA l Y ESTA!!!
-
-                        reference_prepared[lik][l+i*(1+l_max[lik])] = \
-                            test_prepared[lik][l+i*(1+l_max[lik])]
+                    for j in range(n_cls[lik]):
+                        for k in range(1 + ls[i], ls[i+1]):
+                            reference_prepared[lik][k+j*(1+l_max[lik])] = \
+                                test_prepared[lik][k+j*(1+l_max[lik])]
             loglik = self._get_loglik_internal(reference_prepared, verbose=False)
             l_differences.append(dict([lik, reference_loglik[lik]-loglik[lik]]
                                       for lik in loglik))
             l_differences_total.append(sum(reference_loglik[lik]-loglik[lik]
                                            for lik in loglik))
-            l_differences_accum.append(sum(l_differences_total))
+            l_differences_step.append(l_differences_total[-1] -
+                                      (0 if i==0 else l_differences_total[-2]))
+#            print "\n ",ls[1:i+2], l_differences_total
             plt.figure()
-            plt.plot(ls[:i+1], l_differences_total, color="blue")
-            plt.plot(ls[:i+1], l_differences_total, color="red")
+            plt.plot(ls[1:i+2], l_differences_step,  color="blue")
+            plt.plot(ls[1:i+2], l_differences_total, color="red")
             plt.savefig("/tmp/test.png")
 
         # Plot
