@@ -253,6 +253,10 @@ def plot_lik_2D(mode, chains, params,
                 matrix[i, j] = float("nan")
             else:
                 matrix[i, j] = min(matrix[i, j], minloglik)
+                if "delta" in format:
+                    matrix[i, j] -= central_mloglik
+                if "chisq" in format:
+                    matrix[i, j] *= 2
     # Plot #####
     # The matrix must be transposed: the 0th component is the x axis
     matrix = matrix.transpose()
