@@ -5,6 +5,7 @@
 
 import os
 import numpy as np
+import re
 
 class Chain():
     """
@@ -43,7 +44,7 @@ class Chain():
         if self._code == "cosmomc":
             self._load_params_cosmomc(folder, prefix)
             self._chains = [os.path.join(folder, a) for a in os.listdir(folder)
-                            if a.startswith(prefix) and a[-4:]==".txt"] 
+                            if re.match(prefix+"_[0-9]+\.txt", a)] 
         # Points
         individual_chains = []
         for chain in self._chains:
