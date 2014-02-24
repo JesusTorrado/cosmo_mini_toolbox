@@ -182,7 +182,7 @@ def plot_lik_2D(mode, chains, params,
                 for j in [0, 1]:
                     limits_new[i][j] = limits[i][j]
     for i in [0, 1]:
-        if not limits_new[i][0]:
+        if limits_new[i][0] is None:
             limits_new[i][0] = min([chain.get_min(params[i]) for chain in chains])
             limits_new[i][1] = max([chain.get_max(params[i]) for chain in chains])
     maxi = [limits_new[0][1], limits_new[1][1]]
