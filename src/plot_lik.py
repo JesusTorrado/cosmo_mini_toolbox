@@ -211,6 +211,7 @@ def plot_lik_2D(mode, chains, params,
     def to_matrix_element(p1value, p2value):
         i, j = (int(floor((p1value - mini[0]) / float(steps[0]))),
                 int(floor((p2value - mini[1]) / float(steps[1]))))
+        # Handling extremes
         if i == dims[0]:
             i -= 1
         if j == dims[1]:
@@ -222,6 +223,9 @@ def plot_lik_2D(mode, chains, params,
                                                   chain.points("mloglik"),
                                                   chain.points(params[0]),
                                                   chain.points(params[1])):
+            if (p1value < mini[0] or p1value > maxi[0] or
+                p2value < mini[1] or p2value > maxi[1]):
+                continue
             i, j = to_matrix_element(p1value, p2value)
             if mode == "profile":
                 matrix[i,j] = min(mloglik, matrix[i,j])
