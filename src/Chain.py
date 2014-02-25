@@ -32,6 +32,8 @@ class Chain():
 
     """
     def __init__(self, folder=None, prefix=None, code="MontePython"):
+        # Check input
+        assert os.path.isdir(folder), "The chain folder provided is not really a folder."
         codes = ["montepython", "cosmomc"]
         assert code.lower() in codes, "Code not known. Known codes are "+str(codes)
         self._code = code.lower()
@@ -48,6 +50,9 @@ class Chain():
         # Points
         individual_chains = []
         for chain in self._chains:
+            # Handle empty files:
+            if os.path.getsize(chain) == 0:
+                continue
             individual_chains.append(np.loadtxt(chain))
         self._points = np.concatenate(individual_chains)
         # Scaling -- MontePython
@@ -106,7 +111,7 @@ class Chain():
     def _load_params_cosmomc(self, chain_folder, prefix) :
         assert os.path.exists(chain_folder) ,\
             "The chain folder does not exist: "+chain_folder
-        self._name = chain_folder.strip("/").split("/")[-1]
+        self._name = prefix
         logparam = open(os.path.join(chain_folder, prefix+".inputparams"))
         cosmo_arguments = {}
         parameters      = {}
