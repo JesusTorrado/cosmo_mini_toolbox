@@ -291,13 +291,16 @@ def plot_lik_2D(mode, chains, params,
     plt.ylabel(labels[1], fontsize = fontsize_labels, fontweight = "bold")
     # Color bar #####
     cb_options = {}
-    cb_options["shrink"] = cb_shrink
     assert cb_orientation in ["horizontal", "vertical"], (
         "The keyword 'cb_orientation' must be 'horizontal' or 'vertical'")
     cb_options["orientation"] = cb_orientation
     if cb_orientation == "horizontal":
         cb_options["pad"] = 0.125
         cb_options["fraction"] = 0.05
+        cb_options["shrink"] = 1
+    elif cb_orientation == "vertical":
+        cb_options["shrink"] = aspect+2*padding
+    cb_options["shrink"] *= cb_shrink
     if cb_ticks_formatter:
         cb_options["format"]=cb_ticks_formatter
     cb = plt.colorbar(imsh, **cb_options)
