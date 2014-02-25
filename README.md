@@ -58,7 +58,6 @@ The code in `examples/likelihood_example.py` generates the following plots, for 
 
 #### TODO
 
-* Fix padding (specially negative parameters)
 * Fix small issue with the best fit points
 
 ### Likelihood_Planck.py

@@ -276,8 +276,8 @@ def plot_lik_2D(mode, chains, params,
     imsh = plt.imshow(matrix, cmap=cmap, interpolation="nearest", origin="lower",
                       aspect=aspect*sq_aspect, zorder=0,
                       extent = (mini[0], maxi[0], mini[1], maxi[1]))
-    paddings = [padding*(limits_new[i][0]+limits_new[i][1]) for i in [0, 1]]
-    paddings[1] *= aspect
+    paddings = [padding*abs(limits_new[i][1]-limits_new[i][0]) for i in [0, 1]]
+    paddings[short_side] = paddings[short_side]*float(aspect)
     limits_plot = [[limits_new[0][0]-paddings[0], limits_new[0][1]+paddings[0]],
                    [limits_new[1][0]-paddings[1], limits_new[1][1]+paddings[1]]]
     ax.set_xlim(limits_plot[0][0], limits_plot[0][1])
