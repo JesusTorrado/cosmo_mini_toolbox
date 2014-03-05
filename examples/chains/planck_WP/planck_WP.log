@@ -1,5 +1,5 @@
 omega_b   omega_cdm   H0   A_s   n_s   tau_reio   A_ps_100   A_ps_143   A_ps_217   A_cib_143   A_cib_217   A_sz   r_ps   r_cib   n_Dl_cib   cal_100   cal_217   xi_sz_cib   A_ksz   Bm_1_1   z_reio   Omega_Lambda   YHe   ln10^{10}A_s   
-/home/torradocacho/cosmo/chains/finished/base/2013-06-04_100000__1.txt	 Number of steps:73817	Steps accepted:15380	acc = 0.21	min(-loglike) = 4902.54 
+chains/planck_WP/2013-06-04_100000__1.txt	 Number of steps:73817	Steps accepted:15380	acc = 0.21	min(-loglike) = 4902.54 
 --> Total    number    of    steps: 73817
 --> Total number of accepted steps: 15380
 --> Minimum of -logLike           : 4902.54
