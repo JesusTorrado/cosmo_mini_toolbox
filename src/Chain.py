@@ -8,6 +8,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 
+from CLASS_tools import CMBspectrum_from_param_file_CLASS
+
 class Chain():
     """
     Class for manipulating chains and getting info from them, independently from
@@ -65,7 +67,7 @@ class Chain():
         if self._code == "montepython":
             for i, param in enumerate(self.varying_parameters() +
                                       self.derived_parameters()):
-                self._points[:,i+2] *= float(self._params["parameter"][param][4])
+                self._points[:,i+2] *= float(self._raw_params["parameter"][param][4])
         # Finding best fit(s) -- faster if done now (only once!)
         maxloglik = self.get_min("mloglik")
         bf = [i for i, mloglik in enumerate(self.points("mloglik"))
@@ -94,7 +96,7 @@ class Chain():
                     continue
                 left, right = line.split("=")
                 key = left[1+left.find("["):left.find("]")].strip("'").strip('"')
-                cosmo_arguments[key] = right.split(";")[0].strip().strip("'").strip('"')
+                cosmo_arguments[key] = right.split(";")[0].strip()
             if "data.parameters" in line:
                 left, right = line.split("=")
                 key = left[1+left.find("["):left.find("]")].strip("'").strip('"')
@@ -116,7 +118,7 @@ class Chain():
         params = {"cosmo_argument": cosmo_arguments,
                   "parameter":      parameters,
                   "path":           path}
-        self._params = params
+        self._raw_params = params
     def _load_params_cosmomc(self) :
         assert os.path.exists(self._folder) ,\
             "The chain folder does not exist: " + self._folder
@@ -140,7 +142,7 @@ class Chain():
         logparam.close()
         params = {"cosmo_argument": cosmo_arguments,
                   "parameter":      parameters}
-        self._params = params
+        self._raw_params = params
         # Columns in the chain files
         self._sorted_varying_params = [] # list of the (sorted) varying parameters
         self._sorted_derived_params = [] # list of the (sorted) derived parameters
@@ -237,9 +239,9 @@ class Chain():
         if param in self.varying_parameters():
             limits = [None, None]
             for i in [1, 2]:
-               lim = self._params["parameter"][param][i].strip()
+               lim = self._raw_params["parameter"][param][i].strip()
                if self._code == "montepython":
-                   scale = float(self._params["parameter"][param][4])
+                   scale = float(self._raw_params["parameter"][param][4])
                    limits[i-1] = float(lim)*scale if lim != '-1' else None
                elif self._code == "cosmomc":
                    limits[i-1] = float(lim)
@@ -401,3 +403,41 @@ class Chain():
                         bbox_inches='tight', pad_inches=0.1)
             plt.close()    
             return
+
+    # Create a CMBspectrum instance from a chain point
+    def CMBspectrum_from_point(self, point, class_folder, verbose=True):
+        """
+        TODO: document!
+
+        If an argument in the .param file points to a file in a CLASS tree,
+        the given one in the keyword 'class_folder' is used instead.
+        """
+        if self._code == "montepython":
+            # 1. Create a parameters dictionaty from the point
+            parameters = {}
+            # fixed arguments
+            for p, v in self._raw_params["cosmo_argument"].items():
+                path_cosmo_tag = "data.path['cosmo']"
+                if path_cosmo_tag in v:
+                    v2 = v.replace(path_cosmo_tag, class_folder)
+                    v2 = v2.replace("'", "").replace('"', "").strip()
+                    v2 = v2.split("+")
+                    v2[-1] = v2[-1].lstrip("/")
+                    v2 = os.path.join(*v2)
+                    print v2
+                    assert os.path.isfile(v2), \
+                        ("The log.param file references a file %s "%v +
+                         " which is not in the provided CLASS tree, " +
+                         "i.e. the file %s does not exist."%v2)
+                    v = v2
+                parameters[p] = v
+            # varying parameters
+            for p, v in self._raw_params["parameter"].items():
+                if eval(v[-1]) == "cosmo":
+                    parameters[p] = point[self.index_of_param(p, chain=True)]
+            # Create the CMBspectrum instance
+            return CMBspectrum_from_param_file_CLASS(class_folder,
+                                                     param_file=parameters,
+                                                     verbose=verbose)           
+        else:
+            raise NotImplementedError("Not implemented for CosmoMC")

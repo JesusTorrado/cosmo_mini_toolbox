@@ -22,7 +22,6 @@ class CMBspectrum():
     code     : str
                'CLASS' or 'CAMB' (any capitalisation).
     """
-
     def __init__(self, folder, prefix=None, name=None, code="CLASS"):
         if not prefix:
             prefix = ""
@@ -110,7 +109,9 @@ class CMBspectrum():
         self._l_prefactor = True
         self._units = "1"
 
-    ### Retrieve name
+    ### Set and Retrieve name
+    def set_name(self, name):
+        self._name = name
     def name(self):
         return self._name
 
