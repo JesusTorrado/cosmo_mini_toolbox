@@ -163,8 +163,8 @@ def plot_lik_2D(mode, chains, params,
         assert isinstance(chain, Chain), (
             "The first argument must be a list of 'Chain' instances.")
         for i in [0, 1]:
-            assert (params[i] in chain.varying_params() or 
-                    params[i] in chain.derived_params()), (
+            assert (params[i] in chain.varying_parameters() or 
+                    params[i] in chain.derived_parameters()), (
                 "The parameter %s is not on the chain %s."%(params[i], chain.name()))
     # Format of the color scale (profile and mean) and the best fit (all) #####
     factor = 2 if "chisq" in format else 1

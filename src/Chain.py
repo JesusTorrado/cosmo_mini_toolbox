@@ -379,9 +379,12 @@ class Chain():
                           for j in range(correlations.shape[1])]
         for i, j in indices:
             if i != j:
-                ax.annotate("%.2f"%correlations[i, j], xy=(j, i), 
+                ax.annotate("$%.2f$"%correlations[i, j], xy=(j, i), 
                             horizontalalignment='center',
                             verticalalignment='center')
+        # Hide the ticks
+        ax.xaxis.set_ticks_position('none')
+        ax.yaxis.set_ticks_position('none')
         plt.xticks(range(correlations.shape[0]),
                    [self.parameter_label(p) for p in params])
         plt.yticks(range(correlations.shape[1]),
