@@ -69,10 +69,7 @@ class Chain():
                                       self.derived_parameters()):
                 self._points[:,i+2] *= float(self._raw_params["parameter"][param][4])
         # Finding best fit(s) -- faster if done now (only once!)
-        maxloglik = self.get_min("mloglik")
-        bf = [i for i, mloglik in enumerate(self.points("mloglik"))
-              if mloglik == maxloglik]
-        self._bf_points = [self.points()[i] for i in bf]
+        self._mloglik_sorted_points = sorted(self._points, key=lambda x: x[1])
 
     # Load parameters
     def _load_params_montepython(self):
@@ -251,27 +248,18 @@ class Chain():
                              "it is a derived parameter.")
         else:
             raise ValueError("The parameter '%s' is not recognised."%param)
-    def best_fit(self, param=None, more_than_one=False):
+    def best_fit(self, how_many=1, param=None):
         """
-        Returns the best fit point(s) of the chain, as a list of at least one point.
-        (in case there is only more than one best fit point).
+        Returns the best fit point(s) of the chain, as many as the value of
+        'how_many'.
 
         A parameter can be specified to get only its best fit value.
         """
-        if not param:
-            return_value = self._bf_points
+        points = self._mloglik_sorted_points[:how_many]
+        if param:
+            return [p[self._index_of_param(param, chain=True)] for p in points]
         else:
-            return_value = [a[self.index_of_param(param, chain=True)]
-                            for a in self._bf_points]
-        if not(more_than_one) and len(return_value)>1:
-            print ("WARNING: Only one best fit required, but more than one present"+
-                   " with the same value of the likelihood.\n"+
-                   "Use the keyword 'more_than_one=True' to get them all.")
-            return return_value[0]
-        elif not(more_than_one) and len(return_value)==1:
-            return return_value[0]
-        elif more_than_one:
-            return return_value
+            return points
 
     # Covariance matrix 
     def _calculate_covariance_matrix(self):
@@ -405,7 +393,8 @@ class Chain():
             return
 
     # Create a CMBspectrum instance from a chain point
-    def CMBspectrum_from_point(self, point, class_folder, verbose=True):
+    def CMBspectrum_from_point(self, point, class_folder, override_params=None,
+                               verbose=True):
         """
         TODO: document!
 
@@ -413,7 +402,7 @@ class Chain():
         the given one in the keyword 'class_folder' is used instead.
         """
         if self._code == "montepython":
-            # 1. Create a parameters dictionaty from the point
+            # 1. Create a parameters dictionary from the point
             parameters = {}
             # fixed arguments
             for p, v in self._raw_params["cosmo_argument"].items():
@@ -424,20 +413,50 @@ class Chain():
                     v2 = v2.split("+")
                     v2[-1] = v2[-1].lstrip("/")
                     v2 = os.path.join(*v2)
-                    print v2
                     assert os.path.isfile(v2), \
                         ("The log.param file references a file %s "%v +
                          " which is not in the provided CLASS tree, " +
                          "i.e. the file %s does not exist."%v2)
                     v = v2
-                parameters[p] = v
+                parameters[p] = v.replace("'","").replace('"',"")
             # varying parameters
             for p, v in self._raw_params["parameter"].items():
                 if eval(v[-1]) == "cosmo":
                     parameters[p] = point[self.index_of_param(p, chain=True)]
+            # Override parameters
+            for p in override_params:
+                parameters[p] = override_params[p]
             # Create the CMBspectrum instance
             return CMBspectrum_from_param_file_CLASS(class_folder,
                                                      param_file=parameters,
                                                      verbose=verbose)           
+        else:
+            raise NotImplementedError("Not implemented for CosmoMC")
+
+    # Create nuisance parameters file from chain point
+    def nuisance_file_from_point(self, point, nuisance_file):
+        """
+        TODO: document!
+
+        If 'nuisance_file' is set to None, returns the parameters dictionary.
+        """
+        if self._code == "montepython":
+            # 1. Create a nuisance parameters dictionary from the point
+            parameters = {}
+            # fixed arguments
+            for p, v in self._raw_params["parameter"].items():
+                if eval(v[-1]) == "nuisance":
+                    # fixed nuisance parameter
+                    if v[-3] == 0:
+                        parameters[p] = v[1]
+                    # varying nuisance parameter
+                    else:
+                        parameters[p] = point[self.index_of_param(p, chain=True)]
+            # 2. Create the file
+            if nuisance_file:
+                with open(nuisance_file, "w") as nfile:
+                    nfile.write("\n".join([p+"="+str(v) for p, v in parameters]))
+            else:
+                return parameters
         else:
             raise NotImplementedError("Not implemented for CosmoMC")

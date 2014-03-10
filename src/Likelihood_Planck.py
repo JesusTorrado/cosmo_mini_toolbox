@@ -66,6 +66,8 @@ class Likelihood_Planck():
             self._nuisance_parameters[lik] = ({} if not names else
                 odict([[pname,None] for pname in names]))
 
+
+    # Interface methods #########################################################            
     def set_nuisance(self, n_dict=None, n_file=None):
         """
         Set the value of the nuisance parameters.
@@ -117,25 +119,21 @@ class Likelihood_Planck():
         spectrum_prepared = self._prepare_spectrum(spectrum)
         return self._get_loglik_internal(spectrum_prepared, verbose=verbose)
 
-    def compare_loglik(self, reference_spectrum, test_spectrum, delta_l=20,
-                       verbose=False):
+    def compare_loglik(self, test_CMBspectrum, reference_CMBspectrum,
+                       delta_l=20, verbose=False):
         """
         dsaadfhadfhadfhadfhadf
 
 
 
-        Returns a dictionary containing the contribution to the log-likelihood
-        of each of the likelihoods requested.
+
 
         A summary of the information can be printed on screen using the keyword
         'verbose=True'.
         """
-
-
-
         # Prepare both spectra
-        reference_prepared = self._prepare_spectrum(reference_spectrum)
-        test_prepared      = self._prepare_spectrum(test_spectrum)
+        test_prepared      = self._prepare_spectrum(test_CMBspectrum)
+        reference_prepared = self._prepare_spectrum(reference_CMBspectrum)
         # Go alog the multipoles and get the likelihood
         reference_loglik = \
             self._get_loglik_internal(reference_prepared, verbose=False)
@@ -144,42 +142,55 @@ class Likelihood_Planck():
         n_cls = dict([name, len([int(i) for i in lik.has_cl if int(i)])]
                      for name, lik in self._likelihoods.items())
 # TODO asegurarse de que esto esta mejor
-        ls = np.arange(0, 1+max(l_max.values()), delta_l)
-        l_differences       = []
-        l_differences_total = []
-        l_differences_step  = []
+        l_initials  = np.arange(0, 1+max(l_max.values()), delta_l)
+        l_finals    = [l_initials[i+1]-1 for i in range(len(l_initials[:-1]))]
+        l_finals   += [max(l_max.values())]
+        l_intervals = zip(l_initials, l_finals)
+        l_midpoints = [(ini+fin)/2. for ini, fin in l_intervals]
         if verbose:
-            print ("Calculating likelihood differences along multipoles"+
+            print ("Calculating likelihood differences along multipoles " +
                    "with Delta_l = %d"%delta_l)
             print "Progress: l =",
             sys.stdout.flush()
-        for i, l in enumerate(ls[1:]):
+        loglik_differences = []
+        for (l_ini, l_fin) in l_intervals:
+            test_step = dict([lik, np.copy(reference_prepared[lik])]
+                             for lik in reference_prepared)
             if verbose:
-                print l,
-                sys.stdout.flush()       
+                print "[%d, %d] "%(l_ini, l_fin),
+                sys.stdout.flush()
+            this_loglik = {}
             for lik in self._likelihoods_names:
-                if l <= l_max[lik]:
-                    for j in range(n_cls[lik]):
-                        for k in range(1 + ls[i], ls[i+1]):
-                            reference_prepared[lik][k+j*(1+l_max[lik])] = \
-                                test_prepared[lik][k+j*(1+l_max[lik])]
-            loglik = self._get_loglik_internal(reference_prepared, verbose=False)
-            l_differences.append(dict([lik, reference_loglik[lik]-loglik[lik]]
-                                      for lik in loglik))
-            l_differences_total.append(sum(reference_loglik[lik]-loglik[lik]
-                                           for lik in loglik))
-            l_differences_step.append(l_differences_total[-1] -
-                                      (0 if i==0 else l_differences_total[-2]))
-#            print "\n ",ls[1:i+2], l_differences_total
-            plt.figure()
-            plt.plot(ls[1:i+2], l_differences_step,  color="blue")
-            plt.plot(ls[1:i+2], l_differences_total, color="red")
-            plt.savefig("/tmp/test.png")
+                # Don't calculate the likelihood more times than necessary
+                if l_ini > l_max[lik]:
+                    this_loglik[lik] = reference_loglik[lik]
+                    continue
+                for i_cl in range(n_cls[lik]):
+                    test_step[lik][i_cl*(1+l_max[lik])+l_ini:
+                                   i_cl*(1+l_max[lik])+l_fin+1] = \
+                        np.copy(                                                  
+                        test_prepared[lik][i_cl*(1+l_max[lik])+l_ini:
+                                           i_cl*(1+l_max[lik])+l_fin+1])
+                this_loglik[lik] = self._get_loglik_internal(test_step,
+                                                             only=[lik])[lik]
+            loglik_differences.append(dict([lik, (reference_loglik[lik]
+                                                  -this_loglik[lik])]
+                                           for lik in reference_loglik))
+        if verbose:
+            print ""
+        # Prepare for plotting
+        total_differences = [sum(v for v in ll.values())
+                             for ll in loglik_differences]
+        accum_differences = [sum(total_differences[:i+1])
+                             for i in range(len(total_differences))]
+        plt.figure()
+        plt.plot(l_midpoints, total_differences,  color="blue")
+        plt.plot(l_midpoints, accum_differences, color="red")
+        plt.savefig("/tmp/test.png")
+        return l_intervals, total_differences, accum_differences
 
-        # Plot
-        
-
-    # Internal #####
+    
+    # Internal methods ##########################################################
     def _prepare_spectrum(self, spectrum):
         """
         Given a 'CMBspectrum' instance, prepares a dictionary of the spectra
@@ -210,12 +221,13 @@ class Likelihood_Planck():
         vectors = {}
         for lik in self._likelihoods_names:
             vectors[lik] = []
-            # Which spectra
-            which_cls = [int(i) for i in self._likelihoods[lik].has_cl]
-            l_max     = self._likelihoods[lik].lmax
+            # Check enough multipoles
+            l_max = self._likelihoods[lik].lmax
             assert len(l) >= max(l_max), (
                 "Not enought multipoles for likelihood "+
                 "'%s' : needs %d, got %d"%(lik, max(l_max), len(l)))
+            # Which spectra
+            which_cls = [int(i) for i in self._likelihoods[lik].has_cl]
             for i, cli in enumerate(which_cls):
                 if cli:
                     vectors[lik] += prepared[:(1+l_max[i]), i].tolist()
@@ -224,13 +236,18 @@ class Likelihood_Planck():
                 vectors[lik].append(val)
         return vectors
 
-    def _get_loglik_internal(self, spectrum_prepared, verbose=False):
+    def _get_loglik_internal(self, spectrum_prepared, only=None, verbose=False):
         """
         Actually calculates the likelihood of a previously prepared spectrum,
         i.e. the output of 'Likelihood_Planck._prepare_spectrum()'.
         """
+        likelihoods = self._likelihoods_names
+        if only:
+            assert all([lik in likelihoods for lik in only]), \
+                "Likelihood not recognised: '%s'"%lik
+            likelihoods = only
         loglik = {}
-        for lik in self._likelihoods_names:
+        for lik in likelihoods:
             if verbose:
                 print "*** Computing : "+lik
             loglik[lik] = self._likelihoods[lik](spectrum_prepared[lik])
