@@ -120,16 +120,67 @@ class Likelihood_Planck():
         return self._get_loglik_internal(spectrum_prepared, verbose=verbose)
 
     def compare_loglik(self, test_CMBspectrum, reference_CMBspectrum,
-                       delta_l=20, verbose=False):
+                       # Main arguments
+                       delta_l=20, format="-loglik", save_file=None,
+                       verbose=False,
+                       # Fine tuning arguments
+                       black_and_white=False,
+                       ticks_fontsize=10, labels_fontsize=14,
+                       transparent=False, dpi=150):
         """
-        dsaadfhadfhadfhadfhadf
+        Prints a comparison of the log-likelihood of two spectra along
+        multipoles.
+
+        WARNING: Since different multipoles are correlated, and this routine
+            works by substituting the value of the spectrum at small sets of
+            multipoles, the resulting value of the log-likelihood is in
+            general inexact.
+
+        Mandatory arguments:
+        --------------------
+
+        test_CMBspectrum: instance of CMBspectrum
+            Model CMB spectrum to be tested.
+
+        reference_CMBspectrum: instance of CMBspectrum
+            Fiducial CMB spectrum against which to test the test model.
+
+        Main arguments:
+        ---------------
+
+        delta_l: int (default: 20)
+            Size of the bins where the diff. of log-likelihood is calculated.
+            If the correlation between multipoles is high, small values are
+            discouraged.
+
+        format: str (default: "-loglik")
+            Quantity to plot
+            * '-loglik' for the log likelihood
+            * 'chisq' for the chi squared, i.e., 2*(-loglik)
+
+        save_file: str (default: None)
+            If defined, instead of showing the plot, it is saved into the given
+            file name.
+
+        verbose: bool (default: False)
+            If True, a summary of the progress is printed on screen.
 
 
+        Fine tuning parameters:
+        -----------------------
 
+        black_and_white: bool (default: False)
+            If True, prints a version of the plot prepared for B&W printing.
 
+        ticks_fontsize=10, labels_fontsize=14
+            Fontsize of the axes ticks and labels
+    
+        transparent: bool (default: False)
+            Transparency of the background of the plot.
 
-        A summary of the information can be printed on screen using the keyword
-        'verbose=True'.
+        dpi: int (default: 150)
+            Resolution used if the plot is saved to a file
+
         """
         # Prepare both spectra
         test_prepared      = self._prepare_spectrum(test_CMBspectrum)
@@ -141,7 +192,6 @@ class Likelihood_Planck():
                      for lik in self._likelihoods_names)
         n_cls = dict([name, len([int(i) for i in lik.has_cl if int(i)])]
                      for name, lik in self._likelihoods.items())
-# TODO asegurarse de que esto esta mejor
         l_initials  = np.arange(0, 1+max(l_max.values()), delta_l)
         l_finals    = [l_initials[i+1]-1 for i in range(len(l_initials[:-1]))]
         l_finals   += [max(l_max.values())]
@@ -179,14 +229,43 @@ class Likelihood_Planck():
         if verbose:
             print ""
         # Prepare for plotting
-        total_differences = [sum(v for v in ll.values())
+        factor = 2 if format=="chisq" else 1
+        total_differences = [factor*sum(v for v in ll.values())
                              for ll in loglik_differences]
         accum_differences = [sum(total_differences[:i+1])
                              for i in range(len(total_differences))]
-        plt.figure()
-        plt.plot(l_midpoints, total_differences,  color="blue")
-        plt.plot(l_midpoints, accum_differences, color="red")
-        plt.savefig("/tmp/test.png")
+        # Prepare plot
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        opts = [{"color": "blue", "linestyle":"-"},
+                {"color": "red",  "linestyle":"-"}]
+        if black_and_white:
+            opts[0]["color"] = "black"
+            opts[1]["color"] = "black"
+            opts[1]["linestyle"] = "--"
+        ax.axhline(0, linestyle=':', color='grey')
+        ax.plot(l_midpoints, total_differences, label="Local", **opts[0])
+        ax.plot(l_midpoints, accum_differences, label="Accumulated", **opts[1])
+        # Format
+        ax.set_xlabel(r"$\mathrm{Multipole,}\,\ell$", fontsize=labels_fontsize)
+        ax.set_ylabel(r"$-%s \Delta\ln\mathcal{L}$"%(
+            "2\," if format=="chisq" else ""), fontsize=labels_fontsize)
+        leg = ax.legend(loc=3, fancybox=True, prop={'size':10})
+        plt.setp(ax.get_yticklabels(), fontsize=ticks_fontsize)
+        plt.setp(ax.get_xticklabels(), fontsize=ticks_fontsize)
+        # Transparency
+        fig.frameon = False
+        leg.get_frame().set_alpha(float(0.8))
+        # Plot
+        if not save_file:
+            plt.show()
+        else:
+            plotting_command = (
+                "plt.savefig('%s', transparent = %s, dpi = %s, "%(
+                    save_file, transparent, int(dpi))+
+                "bbox_inches='tight', pad_inches=0.1)")
+            eval(plotting_command)
+            plt.close()
         return l_intervals, total_differences, accum_differences
 
     
