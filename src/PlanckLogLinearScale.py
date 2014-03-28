@@ -15,7 +15,7 @@ from matplotlib.ticker import Formatter, FixedLocator
 
 nonpos = "mask"
 change = 50.0
-factor = 750.
+factor = 500.
 
 def _mask_nonpos(a):
     """
@@ -47,7 +47,7 @@ class PlanckScale(mscale.ScaleBase):
     def set_default_locators_and_formatters(self, axis):
         axis.set_major_locator(
             FixedLocator(
-                np.concatenate((np.array([2, 5, 10, 20, change]),
+                np.concatenate((np.array([2, 10, change]),
                                 np.arange(500, 2500, 500)))))
         axis.set_minor_locator(
             FixedLocator(
