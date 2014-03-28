@@ -121,7 +121,8 @@ class Likelihood_Planck():
 
     def compare_loglik(self, test_CMBspectrum, reference_CMBspectrum,
                        # Main arguments
-                       delta_l=20, format="-loglik", save_file=None,
+                       delta_l=20, accumulated=False,
+                       format="-loglik", save_file=None,
                        verbose=False,
                        # Fine tuning arguments
                        black_and_white=False,
@@ -152,6 +153,10 @@ class Likelihood_Planck():
             Size of the bins where the diff. of log-likelihood is calculated.
             If the correlation between multipoles is high, small values are
             discouraged.
+
+        accumulated: bool (default: False)
+            Plot the accumulated difference for growing multipoles.
+            It adds a legend to distinguish between local and accumulated.
 
         format: str (default: "-loglik")
             Quantity to plot
@@ -196,7 +201,7 @@ class Likelihood_Planck():
         l_finals    = [l_initials[i+1]-1 for i in range(len(l_initials[:-1]))]
         l_finals   += [max(l_max.values())]
         l_intervals = zip(l_initials, l_finals)
-        l_midpoints = [(ini+fin)/2. for ini, fin in l_intervals]
+        l_midpoints = np.array([(ini+fin)/2. for ini, fin in l_intervals])
         if verbose:
             print ("Calculating likelihood differences along multipoles " +
                    "with Delta_l = %d"%delta_l)
@@ -228,24 +233,34 @@ class Likelihood_Planck():
                                            for lik in reference_loglik))
         if verbose:
             print ""
-        # Prepare for plotting
+        # Prepare for plotting. Necessary but stupid hack: flattening
         factor = 2 if format=="chisq" else 1
-        total_differences = [factor*sum(v for v in ll.values())
-                             for ll in loglik_differences]
-        accum_differences = [sum(total_differences[:i+1])
-                             for i in range(len(total_differences))]
+        total_differences = np.array([factor*sum(v for v in ll.values())
+                                      for ll in loglik_differences]
+                                    ).flatten()
+        accum_differences = np.array([sum(total_differences[:i+1])
+                                      for i in range(len(total_differences))]
+                                    ).flatten()
         # Prepare plot
         fig = plt.figure()
         ax = fig.add_subplot(111)
         opts = [{"color": "blue", "linestyle":"-"},
                 {"color": "red",  "linestyle":"-"}]
         if black_and_white:
-            opts[0]["color"] = "black"
+            opts[0]["color"] = "gray"
             opts[1]["color"] = "black"
             opts[1]["linestyle"] = "--"
-        ax.axhline(0, linestyle=':', color='grey')
+        # Not necessary when using filling
+        #ax.axhline(0, linestyle=':', color='grey')
         ax.plot(l_midpoints, total_differences, label="Local", **opts[0])
-        ax.plot(l_midpoints, accum_differences, label="Accumulated", **opts[1])
+        ax.fill_between(l_midpoints, total_differences[:],
+                        color=opts[0]["color"], alpha=0.40, linewidth=0)
+        if accumulated:
+            ax.plot(l_midpoints, accum_differences, label="Accumulated",
+                    **opts[1])
+            # Plot legend only if accumulated plot
+            leg = ax.legend(loc=3, fancybox=True, prop={'size':10})
+            leg.get_frame().set_alpha(float(0.8))
         # Format
         ax.set_xlabel(r"$\mathrm{Multipole,}\,\ell$", fontsize=labels_fontsize)
         ax.set_ylabel(r"$-%s \Delta\ln\mathcal{L}$"%(
