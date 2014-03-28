@@ -275,6 +275,10 @@ def plot_Cl_CMB(CMB_spectra,
         "'scale' must be in "+str(scales)
     for ax in axes_list:
         ax.set_xscale(scale)
+        # If Planck scale, plot a grid in the change from linear to log
+        change = 50
+        if scale.lower() == "planck":
+            ax.axvline(x=change, linestyle=":", color="black")
     # Aspect
     if Deltas != 1:
         for ax in axes_list:

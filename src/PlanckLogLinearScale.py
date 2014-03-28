@@ -73,6 +73,8 @@ class PlanckScale(mscale.ScaleBase):
         input_dims   = 1
         output_dims  = 1
         is_separable = True
+        has_inverse = True
+        
         def __init__(self, nonpos):
             Transform.__init__(self)
             if nonpos == 'mask':
@@ -107,7 +109,8 @@ class PlanckScale(mscale.ScaleBase):
         input_dims   = 1
         output_dims  = 1
         is_separable = True
-
+        has_inverse = True
+        
         def transform_non_affine(self, a):
             lower   = a[np.where(a<=factor*np.log10(change))]
             greater = a[np.where(a> factor*np.log10(change))]
