@@ -249,7 +249,6 @@ class Likelihood_Planck():
         if black_and_white:
             opts[0]["color"] = "gray"
             opts[1]["color"] = "black"
-            opts[1]["linestyle"] = "--"
         # Not necessary when using filling
         #ax.axhline(0, linestyle=':', color='grey')
         ax.plot(l_midpoints, total_differences, label="Local", **opts[0])
