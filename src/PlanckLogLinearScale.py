@@ -80,7 +80,7 @@ class PlanckScale(mscale.ScaleBase):
             else:
                 self._handle_nonpos = _clip_nonpos
 
-        def transform(self, a):
+        def transform_non_affine(self, a):
             lower   = a[np.where(a<=change)]
             greater = a[np.where(a> change)]
             if lower.size:
@@ -108,7 +108,7 @@ class PlanckScale(mscale.ScaleBase):
         output_dims  = 1
         is_separable = True
 
-        def transform(self, a):
+        def transform_non_affine(self, a):
             lower   = a[np.where(a<=factor*np.log10(change))]
             greater = a[np.where(a> factor*np.log10(change))]
             if lower.size:
