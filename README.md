@@ -43,7 +43,7 @@ It is used by the likelihood plotter `plot_lik`.
 
 ### plot_lik.py
 
-Plots the [marginal, mean, profile] likelihood of the given chains with respect to the given parameters, on a grid, meaning
+Plots the [marginal|mean|profile] likelihood of the given chains with respect to the given parameters, on a grid, meaning
 * Mean:     `(sum_i #_i * -loglik_i) / (sum_i #_i)`
 * Marginal: `sum_i #_i`
 * Profile:  `max(-loglik_i)`

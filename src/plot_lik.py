@@ -16,23 +16,23 @@ def plot_lik_2D(mode, chains, params,
                 limits=None, n_grid=100, aspect=1,
                 color_map="jet_r", black_and_white=False,
                 cb_orientation="vertical",
-                bf_show=1, regions_show=True, save_file=None,
+                bf_show=1, regions_show=True, save=True, axes=None,
                 # Fine tuning
                 fontsize_labels=18, fontsize_ticks=12,
                 cb_ticks_formatter=None, cb_shrink=float(1),
-                padding = 0.02, dpi=150, not_yet=False,
+                padding = 0.02, dpi=150,
                 transparent=False, transparent_frame=False,
                 bf_alpha=1, bf_radius=1, bf_thickness=1,
                 bf_color_in="white", bf_color_out="black",
-                regions_color="0.5", regions_thickness=1, regions_style="--"
+                regions_color="0.5", regions_thickness=1, regions_style="--",
                 ):
     """
-    Plots the [marginal, mean, profile] likelihood of the given chains
+    Plots the [marginal|mean|profile] likelihood of the given chains
     with respect to the given parameters, on a grid, meaning
 
-    * Mean:     (sum_i #_i * -loglik_i) / (sum_i #_i)
-    * Marginal: sum_i #_i
-    * Profile:  max(-loglik_i)
+    * Mean:      (sum_i #_i * -loglik_i) / (sum_i #_i)
+    * Marginal:  sum_i #_i
+    * Profile:   max(-loglik_i)
 
     being the sums over 'i' extended to all chain points falling within a given
     cell, and being '#_i' the number of stops of the chain point 'i'.
@@ -111,10 +111,18 @@ def plot_lik_2D(mode, chains, params,
         If True, shows a rectangle (or the part of it within the plot limits)
         marking the border of the prior, if any.
 
-    save_file: str (default: None)
-        If defined, instead of showing the plot, it is saved into the given
-        file name.
+    save: bool or str (default: True, i.e. 'show()')
+        This keyword defines what to do with the resulting plot. Three outcomes
+        are possible:
+        * "path/name.extension": saves the plot to the given file name.
+        * True: shows the plot.
+        * False: does nothing, and returns a tuple containing the axes instance
+            and a keyword dictionary that can be passed to 'pyplot.savefig()'.
+            This can be useful if you want, e.g. to plot something on top of it.
 
+    axes: matplotlib.axes.Axes (default: None)
+        Allows to specify the axes in which the figure must be plotted.
+        Useful for including the plot as a subplot in a bigger figure.
 
     Fine Tuninng Parameters:
     ------------------------
@@ -144,11 +152,6 @@ def plot_lik_2D(mode, chains, params,
     transparent_frame: bool (default: False)
         Transparency of the frame of the plot.
         If 'transparent=True', this one is set to True too.
-
-    not_yet: bool (default: False)
-        If True, the output of the function is a string containing a
-        "matplotlib.pyplot.savefig()" command.
-        Useful if you want to add something else on top of the plot.
 
     bf_alpha=1, bf_radius=1, bf_thickness=1,
     bf_color_in="white", bf_color_out="black"
@@ -264,8 +267,11 @@ def plot_lik_2D(mode, chains, params,
     # Plot #####
     # The matrix must be transposed: the 0th component is the x axis
     matrix = matrix.transpose()
-    fig = plt.figure()
-    ax  = plt.axes()
+    # Create axes, in none given
+    if not(axes):
+        fig = plt.figure()
+        fig.frameon = not(transparent_frame or transparent)
+        axes  = plt.axes()
     sq_aspect =  (maxi[0] - mini[0]) / (maxi[1] - mini[1])
     if mode == "marginal":
         if color_map[-2:] == "_r":
@@ -273,22 +279,22 @@ def plot_lik_2D(mode, chains, params,
         else:
             color_map += "_r"
     cmap = "gray" if black_and_white else color_map
-    imsh = plt.imshow(matrix, cmap=cmap, interpolation="nearest", origin="lower",
+    imsh = axes.imshow(matrix, cmap=cmap, interpolation="nearest", origin="lower",
                       aspect=aspect*sq_aspect, zorder=0,
                       extent = (mini[0], maxi[0], mini[1], maxi[1]))
     paddings = [padding*abs(limits_new[i][1]-limits_new[i][0]) for i in [0, 1]]
     paddings[short_side] = paddings[short_side]*float(aspect)
     limits_plot = [[limits_new[0][0]-paddings[0], limits_new[0][1]+paddings[0]],
                    [limits_new[1][0]-paddings[1], limits_new[1][1]+paddings[1]]]
-    ax.set_xlim(limits_plot[0][0], limits_plot[0][1])
-    ax.set_ylim(limits_plot[1][0], limits_plot[1][1])
+    axes.set_xlim(limits_plot[0][0], limits_plot[0][1])
+    axes.set_ylim(limits_plot[1][0], limits_plot[1][1])
     # Axes labels and ticks #####
-    plt.tick_params(labelsize=fontsize_ticks)
+    axes.tick_params(labelsize=fontsize_ticks)
     if not labels:
         labels = params
     assert len(labels) == 2, "There must be 2 labels."
-    plt.xlabel(labels[0], fontsize = fontsize_labels, fontweight = "bold")
-    plt.ylabel(labels[1], fontsize = fontsize_labels, fontweight = "bold")
+    axes.set_xlabel(labels[0], fontsize = fontsize_labels, fontweight = "bold")
+    axes.set_ylabel(labels[1], fontsize = fontsize_labels, fontweight = "bold")
     # Color bar #####
     cb_options = {}
     assert cb_orientation in ["horizontal", "vertical"], (
@@ -303,7 +309,7 @@ def plot_lik_2D(mode, chains, params,
     cb_options["shrink"] *= cb_shrink
     if cb_ticks_formatter:
         cb_options["format"]=cb_ticks_formatter
-    cb = plt.colorbar(imsh, **cb_options)
+    cb = plt.colorbar(imsh, ax=axes, **cb_options)
     cb.ax.tick_params(labelsize=fontsize_ticks)
     if mode in ["profile", "mean"]:
         cb_label = "\ln\mathcal{L}"
@@ -316,66 +322,67 @@ def plot_lik_2D(mode, chains, params,
         cb_label = r"$\#\,\mathrm{steps}$"
     cb.set_label(cb_label, fontsize = fontsize_labels, fontweight = "bold")
     # Show best fit markers #####
-    if bf_show:
-        bfs = {}
-        for chain in chains:
-            bfs[chain.name()] = [[b[chain.index_of_param(a)]
-                for a in ["mloglik", params[0], params[1]]]
-            for b in  chain.best_fit(more_than_one=True)]
-        bf_plot = [item for sublist in bfs.values() for item in sublist]
-        if bf_show == 1:
-            bf_plot = [sorted(bf_plot, key=lambda x: x[0])[0]]
-        # Plot them
-        for bf in bf_plot:
-            plt.scatter([bf[1]],[bf[2]], s=80*bf_radius, alpha=bf_alpha,
-                        edgecolor=bf_color_out, facecolor=bf_color_in,
-                        linewidths=1.5*bf_thickness)
-            print "Best fit: % .6e ; %s = % .6e  ; %s = % .6e"%(
-                factor*(bf[0]+delta), params[0], bf[1], params[1], bf[2])
+# TODO: Fix this!
+#    if bf_show:
+#        bfs = {}
+#        for chain in chains:
+#            bfs[chain.name()] = [[b[chain.index_of_param(a)]
+#                for a in ["mloglik", params[0], params[1]]]
+#            for b in  chain.best_fit(more_than_one=True)]
+#        bf_plot = [item for sublist in bfs.values() for item in sublist]
+#        if bf_show == 1:
+#            bf_plot = [sorted(bf_plot, key=lambda x: x[0])[0]]
+#        # Plot them
+#        for bf in bf_plot:
+#            axes.scatter([bf[1]],[bf[2]], s=80*bf_radius, alpha=bf_alpha,
+#                        edgecolor=bf_color_out, facecolor=bf_color_in,
+#                        linewidths=1.5*bf_thickness)
+#            print "Best fit: % .6e ; %s = % .6e  ; %s = % .6e"%(
+#                factor*(bf[0]+delta), params[0], bf[1], params[1], bf[2])
     # Show chain priors limits #####
     if regions_show:
         for chain in chains:
             limits = [[chain.get_limits(params[i])[j] for j in [0, 1]] for i in [0, 1]]
             # Left
             if limits[0][0] >= limits_plot[0][0]:
-                plt.plot([limits[0][0], limits[0][0]],
+                axes.plot([limits[0][0], limits[0][0]],
                          [max(limits[1][0], limits_plot[1][0]),
                           min(limits[1][1], limits_plot[1][1])],
                          color=regions_color, linewidth=2*regions_thickness,
                          linestyle=regions_style, zorder=1)
             # Right
             if limits[0][1] <= limits_plot[0][1]:
-                plt.plot([limits[0][1], limits[0][1]],
+                axes.plot([limits[0][1], limits[0][1]],
                          [max(limits[1][0], limits_plot[1][0]),
                           min(limits[1][1], limits_plot[1][1])],
                          color=regions_color, linewidth=2*regions_thickness,
                          linestyle=regions_style, zorder=1)
             # Bottom
             if limits[1][0] >= limits_plot[1][0]:
-                plt.plot([max(limits[0][0], limits_plot[0][0]),
+                axes.plot([max(limits[0][0], limits_plot[0][0]),
                           min(limits[0][1], limits_plot[0][1])],
                          [limits[1][0], limits[1][0]],
                          color=regions_color, linewidth=2*regions_thickness,
                          linestyle=regions_style, zorder=1)
             # Top
             if limits[1][1] <= limits_plot[1][1]:
-                plt.plot([max(limits[0][0], limits_plot[0][0]),
+                axes.plot([max(limits[0][0], limits_plot[0][0]),
                           min(limits[0][1], limits_plot[0][1])],
                          [limits[1][1], limits[1][1]],
                          color=regions_color, linewidth=2*regions_thickness,
                          linestyle=regions_style, zorder=1)
     # Plotting #####
-    if not save_file:
+    # Options
+    options = {"dpi": int(dpi), "transparent": transparent,
+               "bbox_inches": "tight", "pad_inches": 0.1}
+    # Save
+    if isinstance(save, basestring):
+        plt.savefig(save, **options)
+        plt.close()    
+    # Show
+    elif save:
         plt.show()
-        return
+        plt.close()
+    # Return
     else:
-        fig.frameon = not(transparent_frame or transparent)
-        plotting_command = ("plt.savefig('%s', transparent = %s, dpi = %s, "%(
-                             save_file, transparent, int(dpi))+
-                            "bbox_inches='tight', pad_inches=0.1)")
-        if not_yet:
-            return plotting_command
-        else:
-            eval(plotting_command)
-            plt.close()    
-            return
+        return axes, options
