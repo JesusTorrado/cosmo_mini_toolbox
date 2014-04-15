@@ -364,7 +364,9 @@ class Chain():
         imsh = ax.imshow(correlations, cmap="RdYlBu_r",
                          interpolation="nearest",# origin="lower",
                          aspect=1, zorder=0)
-        imsh.set_clim(-1, 1)
+        # avoid too-dark colours
+        clim = 1.5
+        imsh.set_clim(-1*clim, clim)
         indices = [(i, j) for i in range(correlations.shape[0])
                           for j in range(correlations.shape[1])]
         for i, j in indices:
