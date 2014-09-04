@@ -162,6 +162,8 @@ def plot_lik_2D(mode, chains, params,
 
     """
     # Make sense of input #####
+    if isinstance(chains, Chain):
+        chains = [chains]
     for chain in chains:
         assert isinstance(chain, Chain), (
             "The first argument must be a list of 'Chain' instances.")

@@ -40,7 +40,7 @@ class Chain():
             "The chain folder provided is not really a folder."
         self._folder = folder
         self._prefix = prefix
-        codes = ["montepython", "cosmomc"]
+        codes = ["montepython", "cosmomc", "cosmomc+multinest"]
         assert code.lower() in codes, \
             "Code not known. Known codes are " + str(codes)
         self._code = code.lower()
@@ -55,6 +55,12 @@ class Chain():
             self._chains = [os.path.join(self._folder, a)
                             for a in os.listdir(self._folder)
                             if re.match(self._prefix+"_[0-9]+\.txt", a)] 
+        # CosmoMC case
+        if self._code == "cosmomc+multinest":
+            self._load_params_cosmomc()
+            self._chains = [os.path.join(self._folder, a)
+                            for a in os.listdir(self._folder)
+                            if re.match(self._prefix+"\.txt", a)] 
         # Points
         individual_chains = []
         for chain in self._chains:
@@ -68,6 +74,9 @@ class Chain():
             for i, param in enumerate(self.varying_parameters() +
                                       self.derived_parameters()):
                 self._points[:,i+2] *= float(self._raw_params["parameter"][param][4])
+        # LogLik better than ChiSq -- MultiNest
+        if self._code == "cosmomc+multinest":
+            self._points[:,1] /= 2
         # Finding best fit(s) -- faster if done now (only once!)
         self._mloglik_sorted_points = sorted(self._points, key=lambda x: x[1])
 

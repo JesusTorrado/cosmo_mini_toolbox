@@ -14,5 +14,5 @@ labels=[r"$H_0$", r"$\omega_b$"]
 modes = ["marginal", "profile"]
 for mode in modes:
     plot_lik_2D(mode, chains, params=params, labels=labels, format = "-loglik",
-                save_file="./%s_%s_%s.png"%(params[0], params[1], mode)
+                save="./%s_%s_%s.png"%(params[0], params[1], mode)
                 )
