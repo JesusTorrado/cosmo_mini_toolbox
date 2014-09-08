@@ -73,7 +73,7 @@ def plot_Cl_CMB(CMB_spectra,
         Used only when 'Deltas'=[0, -1], ignored otherwise.
 
     black_and_white: bool (default: False)
-        If True, select the "gray" color map. Overrides the "color_map" option.
+        If True, prints a monochrome version.
 
     save_file: str (default: None)
         If defined, instead of showing the plot, it is saved into the given
