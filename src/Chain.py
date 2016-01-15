@@ -30,8 +30,8 @@ class Chain():
     prefix: str
         Prefix of the chain files of a 'CosmoMC' chain.
 
-    code: one of ["MontePython" (default), "CosmoMC"]
-        Code with which the chain was generated.
+    code: one of ["MontePython" (default), "CosmoMC", "CosmoMC+MultiNest", "CosmoMC+PolyChord"]
+        Code with which the chain was generated (case insensitive).
 
     """
     def __init__(self, folder=None, prefix=None, code="MontePython"):
@@ -40,9 +40,6 @@ class Chain():
             "The chain folder provided is not really a folder."
         self._folder = folder
         self._prefix = prefix
-        codes = ["montepython", "cosmomc", "cosmomc+multinest"]
-        assert code.lower() in codes, \
-            "Code not known. Known codes are " + str(codes)
         self._code = code.lower()
         # MontePython case
         if self._code == "montepython":
@@ -50,17 +47,19 @@ class Chain():
             self._chains = [os.path.join(self._folder, a)
                             for a in os.listdir(self._folder) if a[-4:]==".txt"]
         # CosmoMC case
-        if self._code == "cosmomc":
+        elif self._code == "cosmomc":
             self._load_params_cosmomc()
             self._chains = [os.path.join(self._folder, a)
                             for a in os.listdir(self._folder)
                             if re.match(self._prefix+"_[0-9]+\.txt", a)] 
-        # CosmoMC case
-        if self._code == "cosmomc+multinest":
+        # CosmoMC+[MultiNest,PolyChord] case
+        elif self._code in ("cosmomc+multinest", "cosmomc+polychord"):
             self._load_params_cosmomc()
             self._chains = [os.path.join(self._folder, a)
                             for a in os.listdir(self._folder)
-                            if re.match(self._prefix+"\.txt", a)] 
+                            if re.match(self._prefix+"\.txt", a)]
+        else:
+            raise ValueError("Code provided by keyword 'code' not known.")
         # Points
         individual_chains = []
         for chain in self._chains:
@@ -75,7 +74,7 @@ class Chain():
                                       self.derived_parameters()):
                 self._points[:,i+2] *= float(self._raw_params["parameter"][param][4])
         # LogLik better than ChiSq -- MultiNest
-        if self._code == "cosmomc+multinest":
+        if self._code in ("cosmomc+multinest", "cosmomc+polychord"):
             self._points[:,1] /= 2
         # Finding best fit(s) -- faster if done now (only once!)
         self._mloglik_sorted_points = sorted(self._points, key=lambda x: x[1])
