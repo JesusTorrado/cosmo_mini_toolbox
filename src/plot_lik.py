@@ -31,7 +31,7 @@ def plot_lik_2D(mode, chains, params,
     with respect to the given parameters, on a grid, meaning
 
     * Mean:      (sum_i #_i * -loglik_i) / (sum_i #_i)
-    * Marginal:  sum_i #_i
+    * Marginal:  log(e * sum_i #_i)
     * Profile:   max(-loglik_i)
 
     being the sums over 'i' extended to all chain points falling within a given
@@ -239,6 +239,11 @@ def plot_lik_2D(mode, chains, params,
                 matrix_num[i,j] += num
             elif mode == "marginal":
                 matrix[i,j] += num
+    # Log and clipping of the marginal matrix
+    if mode == "marginal":
+        matrix = np.log(np.e*matrix)
+        maxlogsteps = matrix.max()
+        matrix = matrix.clip(-maxlogsteps, maxlogsteps)
     # Normalising the "mean" matrix:
     # (and filling with infinities to treat is as the profile one)
     if mode == "mean":
@@ -321,7 +326,7 @@ def plot_lik_2D(mode, chains, params,
             cb_label = "2\,"+cb_label
         cb_label = r"$-%s$"%cb_label
     if mode == "marginal":
-        cb_label = r"$\#\,\mathrm{steps}$"
+        cb_label = r"$\propto\log\left(\#\mathrm{steps}\right)$"
     cb.set_label(cb_label, fontsize = fontsize_labels, fontweight = "bold")
     # Show best fit markers #####
 # TODO: Fix this!
