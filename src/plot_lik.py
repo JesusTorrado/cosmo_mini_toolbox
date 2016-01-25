@@ -378,7 +378,11 @@ def plot_lik_2D(mode, chains, params,
                          [limits[1][1], limits[1][1]],
                          color=regions_color, linewidth=2*regions_thickness,
                          linestyle=regions_style, zorder=1)
-    # Plotting #####
+    # Ticks #####
+    from matplotlib.ticker import AutoMinorLocator
+    axes.xaxis.set_minor_locator(AutoMinorLocator(10))
+    axes.yaxis.set_minor_locator(AutoMinorLocator(10))
+    # Plotting #####   
     # Options
     options = {"dpi": int(dpi), "transparent": transparent,
                "bbox_inches": "tight", "pad_inches": 0.1}
